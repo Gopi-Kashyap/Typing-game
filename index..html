@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Word Fall - Typing Game</title>
+    <style>
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .game-container {
+            width: 800px;
+            height: 600px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            font-weight: bold;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .game-area {
+            width: 100%;
+            height: 480px;
+            position: relative;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.3));
+        }
+
+        .danger-line {
+            position: absolute;
+            bottom: 100px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #ff4444, #ff8888);
+            box-shadow: 0 0 10px #ff4444;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { opacity: 0.5; }
+            to { opacity: 1; }
+        }
+
+        .falling-word {
+            position: absolute;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            padding: 8px 16px;
+            border-radius: 25px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .falling-word.active {
+            background: linear-gradient(45deg, #fa709a, #fee140);
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(250, 112, 154, 0.5);
+        }
+
+        .falling-word.correct {
+            background: linear-gradient(45deg, #56ab2f, #a8e6cf);
+            animation: correctPulse 0.5s ease;
+        }
+
+        @keyframes correctPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        .input-area {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.9);
+            text-align: center;
+            outline: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            font-family: 'Courier New', monospace;
+        }
+
+        .input-field:focus {
+            box-shadow: 0 0 20px rgba(79, 172, 254, 0.5);
+        }
+
+        .game-over-screen, .start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+        }
+
+        .game-over-screen h1, .start-screen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #fa709a, #fee140);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .final-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .final-stat {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .final-stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .play-button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        .play-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(79, 172, 254, 0.4);
+        }
+
+        .lives-indicator {
+            display: flex;
+            gap: 5px;
+        }
+
+        .life {
+            width: 20px;
+            height: 20px;
+            background: #ff4444;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .life.lost {
+            background: rgba(255, 68, 68, 0.3);
+        }
+
+        .cowboy {
+            position: absolute;
+            bottom: 120px;
+            left: 50px;
+            width: 120px;
+            height: 150px;
+            transition: all 0.3s ease;
+            z-index: 10;
+            border: 2px solid red; /* Debug border */
+            background: rgba(255, 0, 0, 0.1); /* Debug background */
+        }
+
+        .cowboy-body {
+            width: 60px;
+            height: 80px;
+            background: linear-gradient(45deg, #8B4513, #A0522D);
+            border-radius: 10px;
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            border: 2px solid #654321;
+        }
+
+        .cowboy-head {
+            width: 50px;
+            height: 50px;
+            background: #FDBCB4;
+            border-radius: 50%;
+            position: absolute;
+            top: 10px;
+            left: 35px;
+            border: 2px solid #CD853F;
+        }
+
+        .cowboy-hat {
+            width: 70px;
+            height: 25px;
+            background: #654321;
+            border-radius: 50px;
+            position: absolute;
+            top: 0px;
+            left: 25px;
+            border: 2px solid #4A4A4A;
+        }
+
+        .cowboy-hat::before {
+            content: '';
+            width: 40px;
+            height: 40px;
+            background: #8B4513;
+            border-radius: 50%;
+            position: absolute;
+            top: -15px;
+            left: 15px;
+            border: 2px solid #654321;
+        }
+
+        .cowboy-arm {
+            width: 30px;
+            height: 60px;
+            background: #FDBCB4;
+            position: absolute;
+            top: 70px;
+            right: -10px;
+            border-radius: 15px;
+            transform-origin: top center;
+            transition: transform 0.2s ease;
+            border: 1px solid #CD853F;
+        }
+
+        .cowboy.shooting .cowboy-arm {
+            transform: rotate(-45deg);
+        }
+
+        .cowboy-gun {
+            width: 40px;
+            height: 15px;
+            background: linear-gradient(45deg, #2C2C2C, #4A4A4A);
+            position: absolute;
+            bottom: 5px;
+            right: -35px;
+            border-radius: 3px;
+            transform-origin: left center;
+            transition: all 0.2s ease;
+            border: 1px solid #1C1C1C;
+        }
+
+        .cowboy-gun::before {
+            content: '';
+            width: 15px;
+            height: 20px;
+            background: #654321;
+            position: absolute;
+            left: 8px;
+            top: -2px;
+            border-radius: 3px;
+        }
+
+        .cowboy.shooting .cowboy-gun {
+            transform: translateX(-5px);
+        }
+
+        .muzzle-flash {
+            position: absolute;
+            right: -50px;
+            bottom: 10px;
+            width: 30px;
+            height: 8px;
+            background: radial-gradient(ellipse, #FFD700 0%, #FFA500 50%, transparent 70%);
+            border-radius: 50%;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.1s ease;
+        }
+
+        .cowboy.shooting .muzzle-flash {
+            opacity: 1;
+            transform: scale(1.5);
+            box-shadow: 0 0 20px #FFD700;
+        }
+
+        .bullet {
+            position: absolute;
+            width: 4px;
+            height: 12px;
+            background: linear-gradient(to bottom, #FFD700, #FFA500);
+            border-radius: 50%;
+            box-shadow: 0 0 5px #FFD700;
+            z-index: 5;
+        }
+
+        .bullet-trail {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(to right, transparent, #FFD700, transparent);
+            box-shadow: 0 0 10px #FFD700;
+            z-index: 4;
+        }
+
+        .explosion {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, #FFD700 0%, #FF4500 30%, #FF0000 60%, transparent 100%);
+            border-radius: 50%;
+            animation: explode 0.5s ease-out forwards;
+            z-index: 6;
+        }
+
+        .particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #fee140;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particleFall 2s linear infinite;
+        }
+
+        @keyframes particleFall {
+            0% {
+                transform: translateY(-10px);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(600px);
+                opacity: 0;
+            }
+        }
+
+        @keyframes particleExplode {
+            0% {
+                transform: scale(1) translate(0, 0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(0.3) translate(var(--dx, 30px), var(--dy, -30px));
+                opacity: 0;
+            }
+        }
+
+        .cowboy-legs {
+            position: absolute;
+            bottom: 0;
+            left: 35px;
+            width: 50px;
+            height: 40px;
+        }
+
+        .cowboy-leg {
+            width: 20px;
+            height: 35px;
+            background: #4169E1;
+            position: absolute;
+            bottom: 0;
+            border-radius: 5px;
+            border: 1px solid #1E3A8A;
+        }
+
+        .cowboy-leg:first-child {
+            left: 5px;
+        }
+
+        .cowboy-leg:last-child {
+            right: 5px;
+        }
+
+        .cowboy-boot {
+            width: 25px;
+            height: 12px;
+            background: #654321;
+            position: absolute;
+            bottom: -8px;
+            left: -2px;
+            border-radius: 0 8px 3px 0;
+            border: 1px solid #4A4A4A;
+        }
+   
+    </style>
+
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-value" id="level">1</span>
+                    <span class="stat-label">LEVEL</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="score">0</span>
+                    <span class="stat-label">SCORE</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="wpm">0</span>
+                    <span class="stat-label">WPM</span>
+                </div>
+            </div>
+            <div class="lives-indicator">
+                <div class="life" id="life1"></div>
+                <div class="life" id="life2"></div>
+                <div class="life" id="life3"></div>
+            </div>
+        </div>
+
+        <div class="game-area" id="gameArea">
+            <div class="danger-line"></div>
+        </div>
+
+        <div class="input-area">
+            <input type="text" class="input-field" id="inputField" placeholder="Start typing to destroy falling words..." disabled>
+        </div>
+
+        <div class="start-screen" id="startScreen">
+            <h1>Word Fall</h1>
+            <p>Type the falling words before they reach the danger line!</p>
+            <p>You lose a life when 3 words cross the line.</p>
+            <button class="play-button" onclick="startGame()">Start Game</button>
+        </div>
+
+        <div class="game-over-screen" id="gameOverScreen" style="display: none;">
+            <h1>Game Over!</h1>
+            <div class="final-stats">
+                <div class="final-stat">
+                    <span class="final-stat-value" id="finalScore">0</span>
+                    <span>Final Score</span>
+                </div>
+                <div class="final-stat">
+                    <span class="final-stat-value" id="finalLevel">1</span>
+                    <span>Level Reached</span>
+                </div>
+                <div class="final-stat">
+                    <span class="final-stat-value" id="finalWPM">0</span>
+                    <span>Average WPM</span>
+                </div>
+                <div class="final-stat">
+                    <span class="final-stat-value" id="finalAccuracy">100%</span>
+                    <span>Accuracy</span>
+                </div>
+            </div>
+            <button class="play-button" onclick="startGame()">Play Again</button>
+        </div>
+    </div>
+
+
+</body>
+<script>
+    
+        class TypingGame {
+            constructor() {
+                this.gameArea = document.getElementById('gameArea');
+                this.inputField = document.getElementById('inputField');
+                this.startScreen = document.getElementById('startScreen');
+                this.gameOverScreen = document.getElementById('gameOverScreen');
+                this.inputArea = document.querySelector('.input-area');
+                
+                // Fallback words in case API fails
+                this.fallbackWords = [
+                    'cat', 'dog', 'house', 'tree', 'car', 'book', 'pen', 'cup', 'hand', 'face', 'moon', 'star',
+                    'computer', 'keyboard', 'mouse', 'screen', 'phone', 'table', 'chair', 'window', 'garden',
+                    'javascript', 'programming', 'development', 'algorithm', 'function', 'variable', 'array',
+                    'magnificent', 'extraordinary', 'unbelievable', 'spectacular', 'phenomenal', 'incredible'
+                ];
+                this.wordQueue = [];
+                this.isLoadingWords = false;
+                
+                this.reset();
+                this.setupEventListeners();
+            }
+
+            reset() {
+                this.level = 1;
+                this.score = 0;
+                this.lives = 3;
+                this.wordsTyped = 0;
+                this.totalCharacters = 0;
+                this.correctCharacters = 0;
+                this.startTime = null;
+                this.gameRunning = false;
+                this.fallingWords = [];
+                this.activeWordId = null;
+                this.wordSpeed = .3;
+                this.spawnRate = 2000;
+                this.maxWordsOnScreen = 3;
+                this.wordsBelowLine = 0;
+            }
+
+            setupEventListeners() {
+                this.inputField.addEventListener('input', (e) => this.handleInput(e));
+            }
+
+            startGame() {
+                this.reset();
+                this.startScreen.style.display = 'none';
+                this.gameOverScreen.style.display = 'none';
+                this.inputField.disabled = false;
+                this.inputField.focus();
+                this.gameRunning = true;
+                this.startTime = Date.now();
+                
+                // Pre-load some words
+                this.fetchRandomWords();
+                
+                this.updateDisplay();
+                this.gameLoop();
+                this.spawnWord();
+            }
+
+            gameLoop() {
+                if (!this.gameRunning) return;
+                
+                this.updateFallingWords();
+                this.updateWPM();
+                this.checkLevelProgression();
+                
+                setTimeout(() => this.gameLoop(), 16); // 60 FPS
+            }
+
+            async spawnWord() {
+                if (!this.gameRunning) return;
+                
+                if (this.fallingWords.length < this.maxWordsOnScreen) {
+                    const word = await this.getRandomWord();
+                    const wordElement = this.createWordElement(word);
+                    this.fallingWords.push({
+                        element: wordElement,
+                        word: word,
+                        y: 0,
+                        x: Math.random() * (this.gameArea.offsetWidth - 120),
+                        id: Date.now() + Math.random()
+                    });
+                    this.gameArea.appendChild(wordElement);
+                }
+                
+                const nextSpawn = Math.max(500, this.spawnRate - (this.level * 100));
+                setTimeout(() => this.spawnWord(), nextSpawn);
+            }
+
+            async fetchRandomWords() {
+                if (this.isLoadingWords) return;
+                
+                this.isLoadingWords = true;
+                try {
+                    // Fetch different amounts based on level for variety
+                    const wordCount = Math.min(10, 5 + this.level);
+                    const response = await fetch(`https://random-word-api.herokuapp.com/word?number=${wordCount}`);
+                    
+                    if (!response.ok) {
+                        throw new Error('API request failed');
+                    }
+                    
+                    const words = await response.json();
+                    
+                    // Filter words based on current level difficulty
+                    const filteredWords = words.filter(word => {
+                        const length = word.length;
+                        if (this.level <= 2) return length >= 3 && length <= 6;
+                        if (this.level <= 4) return length >= 4 && length <= 8;
+                        if (this.level <= 6) return length >= 5 && length <= 10;
+                        if (this.level <= 8) return length >= 6 && length <= 12;
+                        return length >= 4; // High levels accept any length
+                    });
+                    
+                    // Add filtered words to queue
+                    this.wordQueue.push(...(filteredWords.length > 0 ? filteredWords : words));
+                    
+                } catch (error) {
+                    console.warn('Failed to fetch words from API, using fallback words:', error);
+                    // Use fallback words based on level
+                    const fallbackCount = Math.min(5, this.fallbackWords.length);
+                    for (let i = 0; i < fallbackCount; i++) {
+                        const randomIndex = Math.floor(Math.random() * this.fallbackWords.length);
+                        this.wordQueue.push(this.fallbackWords[randomIndex]);
+                    }
+                }
+                
+                this.isLoadingWords = false;
+            }
+
+            async getRandomWord() {
+                // Keep the queue filled
+                if (this.wordQueue.length < 3) {
+                    this.fetchRandomWords();
+                }
+                
+                // If we have words in queue, use them
+                if (this.wordQueue.length > 0) {
+                    return this.wordQueue.shift();
+                }
+                
+                // Fallback to predefined words if queue is empty
+                return this.fallbackWords[Math.floor(Math.random() * this.fallbackWords.length)];
+            }
+
+            createWordElement(word) {
+                const element = document.createElement('div');
+                element.className = 'falling-word';
+                element.textContent = word;
+                element.style.left = '0px';
+                element.style.top = '0px';
+                return element;
+            }
+
+            updateFallingWords() {
+                this.fallingWords.forEach((wordObj, index) => {
+                    wordObj.y += this.wordSpeed + (this.level * 0.3);
+                    wordObj.element.style.top = wordObj.y + 'px';
+                    wordObj.element.style.left = wordObj.x + 'px';
+                    
+                    // Check if word crossed the danger line (only count once per word)
+                    if (wordObj.y > 380 && !wordObj.crossedLine) {
+                        wordObj.crossedLine = true;
+                        this.loseLife();
+                    }
+                    
+                    // Remove words that are off screen
+                    if (wordObj.y > 600) {
+                        this.removeWord(index);
+                    }
+                });
+            }
+
+            handleInput(e) {
+                const input = e.target.value.toLowerCase();
+                
+                // Find matching word
+                let matchingWord = null;
+                let bestMatchLength = 0;
+                
+                this.fallingWords.forEach(wordObj => {
+                    if (wordObj.word.toLowerCase().startsWith(input) && input.length > bestMatchLength) {
+                        matchingWord = wordObj;
+                        bestMatchLength = input.length;
+                    }
+                });
+                
+                // Update active word highlighting
+                this.fallingWords.forEach(wordObj => {
+                    wordObj.element.classList.remove('active');
+                });
+                
+                if (matchingWord) {
+                    matchingWord.element.classList.add('active');
+                    this.activeWordId = matchingWord.id;
+                    
+                    // Check if this is a new character typed (shoot bullet per letter)
+                    const currentLength = input.length;
+                    const previousLength = matchingWord.typedLength || 0;
+                    
+                    if (currentLength > previousLength) {
+                        // New character typed - fire bullet!
+                        this.fireBullet(matchingWord, currentLength - 1);
+                        matchingWord.typedLength = currentLength;
+                    }
+                    
+                    // Check if word is completely typed
+                    if (matchingWord.word.toLowerCase() === input) {
+                        this.correctWord(matchingWord);
+                        this.inputField.value = '';
+                        this.activeWordId = null;
+                        return;
+                    }
+                } else if (input.length > 0) {
+                    // Count incorrect characters when no word matches
+                    this.totalCharacters += input.length;
+                    this.inputField.value = '';
+                }
+            }
+
+            checkWord() {
+                const input = this.inputField.value.toLowerCase();
+                const activeWord = this.fallingWords.find(w => w.id === this.activeWordId);
+                
+                if (activeWord && activeWord.word.toLowerCase() === input) {
+                    this.correctWord(activeWord);
+                } else {
+                    // Count as incorrect typing
+                    this.totalCharacters += input.length;
+                }
+                
+                this.inputField.value = '';
+                this.activeWordId = null;
+            }
+
+            correctWord(wordObj) {
+                const index = this.fallingWords.indexOf(wordObj);
+                // Bonus points for longer words and higher levels
+                const basePoints = wordObj.word.length * 10;
+                const levelBonus = this.level * 5;
+                const lengthBonus = wordObj.word.length > 10 ? wordObj.word.length * 5 : 0;
+                this.score += (basePoints + levelBonus + lengthBonus);
+                
+                this.wordsTyped++;
+                this.totalCharacters += wordObj.word.length;
+                this.correctCharacters += wordObj.word.length;
+                
+                // Create final explosion when word is completed
+                this.createExplosion(wordObj.x + 60, wordObj.y + 20);
+                
+                // Animation for word destruction
+                wordObj.element.classList.add('correct');
+                
+                setTimeout(() => {
+                    this.removeWord(index);
+                }, 500);
+                
+                this.updateDisplay();
+            }
+
+            fireBullet(targetWord, letterIndex) {
+                // Add firing flash to input area
+                this.inputArea.classList.add('firing');
+                setTimeout(() => {
+                    this.inputArea.classList.remove('firing');
+                }, 150);
+                
+                // Create muzzle flash at input area
+                const flash = document.createElement('div');
+                flash.className = 'muzzle-flash';
+                flash.style.left = '50%';
+                flash.style.bottom = '65px';
+                flash.style.transform = 'translateX(-50%)';
+                this.gameArea.appendChild(flash);
+                
+                setTimeout(() => {
+                    if (flash.parentNode) flash.parentNode.removeChild(flash);
+                }, 100);
+                
+                // Create bullet
+                const bullet = document.createElement('div');
+                bullet.className = 'bullet';
+                
+                // Start position (from input area center)
+                const startX = 400; // Center of 800px wide game area
+                const startY = 520; // Just above input field
+                bullet.style.left = startX + 'px';
+                bullet.style.top = startY + 'px';
+                
+                // Target position (specific letter in the word)
+                const letterWidth = 12; // Approximate width per letter
+                const targetX = targetWord.x + 20 + (letterIndex * letterWidth);
+                const targetY = targetWord.y + 20;
+                
+                this.gameArea.appendChild(bullet);
+                
+                // Create bullet trail
+                const trail = document.createElement('div');
+                trail.className = 'bullet-trail';
+                const distance = Math.sqrt(Math.pow(targetX - startX, 2) + Math.pow(targetY - startY, 2));
+                const angle = Math.atan2(targetY - startY, targetX - startX) * 180 / Math.PI;
+                
+                trail.style.left = startX + 'px';
+                trail.style.top = (startY + 6) + 'px';
+                trail.style.width = distance + 'px';
+                trail.style.transform = `rotate(${angle}deg)`;
+                trail.style.transformOrigin = '0 center';
+                this.gameArea.appendChild(trail);
+                
+                // Animate bullet
+                const duration = Math.min(400, distance * 1.5);
+                bullet.style.transition = `all ${duration}ms ease-out`;
+                trail.style.transition = `opacity ${duration}ms linear`;
+                
+                setTimeout(() => {
+                    bullet.style.left = targetX + 'px';
+                    bullet.style.top = targetY + 'px';
+                    trail.style.opacity = '0';
+                }, 10);
+                
+                // Create small explosion at letter position
+                setTimeout(() => {
+                    this.createLetterHit(targetX, targetY);
+                    
+                    // Remove bullet and trail
+                    if (bullet.parentNode) bullet.parentNode.removeChild(bullet);
+                    if (trail.parentNode) trail.parentNode.removeChild(trail);
+                }, duration);
+            }
+
+            createLetterHit(x, y) {
+                const explosion = document.createElement('div');
+                explosion.className = 'explosion';
+                explosion.style.left = (x - 12) + 'px';
+                explosion.style.top = (y - 12) + 'px';
+                this.gameArea.appendChild(explosion);
+                
+                // Create small hit particles
+                for (let i = 0; i < 4; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = (x + (Math.random() - 0.5) * 20) + 'px';
+                    particle.style.top = (y + (Math.random() - 0.5) * 20) + 'px';
+                    particle.style.background = `hsl(${Math.random() * 60 + 15}, 100%, 70%)`; // Random orange/yellow colors
+                    particle.style.width = '4px';
+                    particle.style.height = '4px';
+                    particle.style.animation = 'particleExplode 0.6s ease-out forwards';
+                    this.gameArea.appendChild(particle);
+                    
+                    setTimeout(() => {
+                        if (particle.parentNode) {
+                            particle.parentNode.removeChild(particle);
+                        }
+                    }, 600);
+                }
+                
+                // Remove explosion after animation
+                setTimeout(() => {
+                    if (explosion.parentNode) {
+                        explosion.parentNode.removeChild(explosion);
+                    }
+                }, 400);
+            }
+
+            createExplosion(x, y) {
+                const explosion = document.createElement('div');
+                explosion.className = 'explosion';
+                explosion.style.left = (x - 20) + 'px';
+                explosion.style.top = (y - 20) + 'px';
+                this.gameArea.appendChild(explosion);
+                
+                // Create explosion particles
+                for (let i = 0; i < 6; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = (x + (Math.random() - 0.5) * 30) + 'px';
+                    particle.style.top = (y + (Math.random() - 0.5) * 30) + 'px';
+                    particle.style.background = `hsl(${Math.random() * 60 + 15}, 100%, 50%)`; // Random orange/yellow colors
+                    particle.style.animation = 'particleExplode 0.8s ease-out forwards';
+                    this.gameArea.appendChild(particle);
+                    
+                    setTimeout(() => {
+                        if (particle.parentNode) {
+                            particle.parentNode.removeChild(particle);
+                        }
+                    }, 800);
+                }
+                
+                // Remove explosion after animation
+                setTimeout(() => {
+                    if (explosion.parentNode) {
+                        explosion.parentNode.removeChild(explosion);
+                    }
+                }, 500);
+            }
+
+            removeWord(index) {
+                if (index >= 0 && index < this.fallingWords.length) {
+                    const wordObj = this.fallingWords[index];
+                    if (wordObj.element.parentNode) {
+                        wordObj.element.parentNode.removeChild(wordObj.element);
+                    }
+                    this.fallingWords.splice(index, 1);
+                }
+            }
+
+            loseLife() {
+                this.lives--;
+                
+                // Update life indicator - fix the calculation
+                const lostLifeIndex = 3 - this.lives; // 1st life lost = index 1, 2nd = index 2, 3rd = index 3
+                if (lostLifeIndex >= 1 && lostLifeIndex <= 3) {
+                    document.getElementById(`life${lostLifeIndex}`).classList.add('lost');
+                }
+                
+                if (this.lives <= 0) {
+                    setTimeout(() => this.gameOver(), 500); // Small delay for visual effect
+                }
+            }
+
+            checkLevelProgression() {
+                const newLevel = Math.floor(this.score / 500) + 1;
+                if (newLevel > this.level) {
+                    this.level = newLevel;
+                    this.maxWordsOnScreen = Math.min(6, 3 + Math.floor(this.level / 2));
+                    this.updateDisplay();
+                }
+            }
+
+            updateWPM() {
+                if (this.startTime && this.wordsTyped > 0) {
+                    const timeElapsed = (Date.now() - this.startTime) / 60000; // minutes
+                    const wpm = Math.round(this.wordsTyped / timeElapsed);
+                    document.getElementById('wpm').textContent = wpm;
+                }
+            }
+
+            updateDisplay() {
+                document.getElementById('level').textContent = this.level;
+                document.getElementById('score').textContent = this.score;
+                
+                // Update life indicators
+                for (let i = 1; i <= 3; i++) {
+                    const life = document.getElementById(`life${i}`);
+                    if (i > this.lives) {
+                        life.classList.add('lost');
+                    } else {
+                        life.classList.remove('lost');
+                    }
+                }
+            }
+
+            gameOver() {
+                console.log('Game Over triggered'); // Debug log
+                this.gameRunning = false;
+                this.inputField.disabled = true;
+                this.inputField.blur(); // Remove focus from input
+                
+                // Clear remaining words
+                this.fallingWords.forEach(wordObj => {
+                    if (wordObj.element && wordObj.element.parentNode) {
+                        wordObj.element.parentNode.removeChild(wordObj.element);
+                    }
+                });
+                this.fallingWords = [];
+                
+                // Clear any remaining particles
+                const particles = this.gameArea.querySelectorAll('.particle');
+                particles.forEach(particle => {
+                    if (particle.parentNode) {
+                        particle.parentNode.removeChild(particle);
+                    }
+                });
+                
+                // Calculate final stats
+                const timeElapsed = this.startTime ? (Date.now() - this.startTime) / 60000 : 1;
+                const finalWPM = this.wordsTyped > 0 ? Math.round(this.wordsTyped / timeElapsed) : 0;
+                const accuracy = this.totalCharacters > 0 ? Math.round((this.correctCharacters / this.totalCharacters) * 100) : 100;
+                
+                // Display final stats
+                document.getElementById('finalScore').textContent = this.score;
+                document.getElementById('finalLevel').textContent = this.level;
+                document.getElementById('finalWPM').textContent = finalWPM;
+                document.getElementById('finalAccuracy').textContent = accuracy + '%';
+                
+                // Force show the game over screen
+                this.gameOverScreen.style.display = 'flex';
+                this.gameOverScreen.style.visibility = 'visible';
+                this.gameOverScreen.style.opacity = '1';
+                
+                console.log('Game Over screen should be visible now'); // Debug log
+            }
+        }
+
+        // Initialize game
+        const game = new TypingGame();
+
+        function startGame() {
+            // Hide all screens first
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('gameOverScreen').style.display = 'none';
+            
+            // Reset all lives visually
+            for (let i = 1; i <= 3; i++) {
+                document.getElementById(`life${i}`).classList.remove('lost');
+            }
+            
+            game.startGame();
+        }
+   
+</script>
+</html>
